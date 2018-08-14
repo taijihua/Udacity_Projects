@@ -45,11 +45,12 @@ My pipeline consisted of 6 steps, use the following image as an example:
 
 
 In order to draw a single line on the left and right lanes, I modified the draw_lines() function by doing the following:
-    1. calculate the slopes of all fitted lines by Hough transform
-    2. Seperate the lines to two buckets of left lane or right lane based on slope (>0.2 or <-0.2, i chose a cutoff value 0.2 rather than 0 and it seemed to help remove some noisy horizontal lines)
-    3. for each bucket, fit a single lane line by combining all end points
-    4. overlay the single left lane line and single right lane line
+*   calculate the slopes of all fitted lines by Hough transform
+*   Seperate the lines to two buckets of left lane or right lane based on slope (>0.2 or <-0.2, i chose a cutoff value 0.2 rather than 0 and it seemed to help remove some noisy horizontal lines)
+*   for each bucket, fit a single lane line by combining all end points
+*   overlay the single left lane line and single right lane line
 
+---
 ### 2. Potential shortcomings and possible improvements
 
 
