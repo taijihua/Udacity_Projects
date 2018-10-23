@@ -1,0 +1,6 @@
+# Don't track content of these folders
+Project3_Traffic_Sign_Classifier/traffic-signs-data/
+Project4_Behavior_Cloning/new_training_data/
+self-driving-car-sim/
+
+
