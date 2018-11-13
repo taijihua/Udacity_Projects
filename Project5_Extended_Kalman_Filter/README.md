@@ -1,8 +1,31 @@
-# Extended Kalman Filter Project Starter Code
-Self-Driving Car Engineer Nanodegree Program
+# Extended Kalman Filter Project Report
 
-In this project you will utilize a kalman filter to estimate the state of a moving object of interest with noisy lidar and radar measurements. Passing the project requires obtaining RMSE values that are lower than the tolerance outlined in the project rubric. 
+In this project I utilized a kalman filter to estimate the state of a moving object of interest with noisy lidar and radar measurements. The result RMSE (root mean square errors between kalman filter output and ground truth) values were lower than the tolerance outlined in the project rubric:
 
+    "px, py, vx, vy output coordinates must have an RMSE <= [.11, .11, 0.52, 0.52] when using the file: "obj_pose-laser-radar-synthetic-input.txt" which is the same data file the simulator uses for Dataset 1"
+
+[//]: # (Image References)
+
+[image1]: ./pics/Simulator_output_dataset1.png "dataset1"
+[image2]: ./pics/Simulator_output_dataset2.png "dataset2"
+[image3]: ./pics/Kalman_Filter_algorithm.png "Kalman Filter algorithm"
+[image4]: ./pics/Sensor_fusion_process_flow.png "Sensor Fusion flow"
+
+Here is the simulator display of the kalman filter output:
+
+![dataset1][image1]
+![dataset2][image2]
+
+The green dots are kalman filter output, and the red and blue dots are lidar and radar measurements.
+
+Here is the basic flow of the kalman filter design for sensor fusion (from Udacity class):
+![Sensor fusion flow][image4]
+
+And the basic kalman filter algorithm:
+![Kalman Filter][image3]
+while basic kalman filter was used for processing lidar data (measurement contains px and py), Extended Kalman filter algorithm was used for processing radar data (measurement contains rho, theta, and rho_dot, and no direct matrix H to convert state vector x to measurements). The only difference is that in measurement update y = z-H*x is replaced by a nonlinear function of x (thus y = z-f(x)), and in the next equations the H is using the Jacobian matrix of f(x) for approximation)
+
+# ============= Resources (provided by Udacity)===========
 This project involves the Term 2 Simulator which can be downloaded [here](https://github.com/udacity/self-driving-car-sim/releases)
 
 This repository includes two files that can be used to set up and install [uWebSocketIO](https://github.com/uWebSockets/uWebSockets) for either Linux or Mac systems. For windows you can use either Docker, VMware, or even [Windows 10 Bash on Ubuntu](https://www.howtogeek.com/249966/how-to-install-and-use-the-linux-bash-shell-on-windows-10/) to install uWebSocketIO. Please see the uWebSocketIO Starter Guide page in the classroom within the EKF Project lesson for the required version and installation scripts.
