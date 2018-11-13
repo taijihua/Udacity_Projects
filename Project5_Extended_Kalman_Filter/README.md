@@ -19,10 +19,13 @@ Here is the simulator display of the kalman filter output:
 The green dots are kalman filter output, and the red and blue dots are lidar and radar measurements.
 
 Here is the basic flow of the kalman filter design for sensor fusion (from Udacity class):
+
 ![Sensor fusion flow][image4]
 
 And the basic kalman filter algorithm:
+
 ![Kalman Filter][image3]
+
 while basic kalman filter was used for processing lidar data (measurement contains px and py), Extended Kalman filter algorithm was used for processing radar data (measurement contains rho, theta, and rho_dot, and no direct matrix H to convert state vector x to measurements). The only difference is that in measurement update y = z-H*x is replaced by a nonlinear function of x (thus y = z-f(x)), and in the next equations the H is using the Jacobian matrix of f(x) for approximation)
 
 # ============= Resources (provided by Udacity)===========
