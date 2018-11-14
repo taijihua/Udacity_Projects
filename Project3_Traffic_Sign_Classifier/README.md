@@ -128,7 +128,7 @@ Here are five German traffic signs that I found on the web:
 
 | Image         	|     Notes	        					| 
 |:---------------------:|:---------------------------------------------:| 
-    |![alt text][image4]| Double Curve, This image could be difficult since the sign is not centered but on top half,and the sign is flipped left to right compared to most traning samples  |
+|![alt text][image4]| Double Curve, This image could be difficult since the sign is not centered but on top half,and the sign is flipped left to right compared to most traning samples  |
 |![alt text][image5]| Speed limit (30km/h)|
 |![alt text][image6]| Speed limit (70km/h)|
 |![alt text][image7]| End of Speed limit - 60km/h, this will be difficult since no such sign in training sample|
