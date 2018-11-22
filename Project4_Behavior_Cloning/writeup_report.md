@@ -19,10 +19,9 @@ The goals / steps of this project are the following:
 [image1]: ./examples/center_2018_10_22_20_52_04_897.jpg "center image"
 [image2]: ./examples/center_2018_11_19_23_16_18_825.jpg "side image from right"
 [image3]: ./examples/center_2018_11_19_23_19_31_998.jpg "side image from left"
-[image4]: ./examples/placeholder_small.png "Recovery Image"
-[image5]: ./examples/placeholder_small.png "Recovery Image"
-[image6]: ./examples/placeholder_small.png "Normal Image"
-[image7]: ./examples/placeholder_small.png "Flipped Image"
+[image4]: ./examples/Histogram_original_data.png "histogram of original data"
+[image5]: ./examples/history_loss.png "training history"
+
 
 ## Rubric Points
 ### Here I will consider the [rubric points](https://review.udacity.com/#!/rubrics/432/view) individually and describe how I addressed each point in my implementation.  
@@ -34,7 +33,7 @@ The goals / steps of this project are the following:
 
 My project includes the following files:
 * model.py containing the script to create and train the model
-* drive.py for driving the car in autonomous mode (no modification from Udacity's original file)
+* drive.py for driving the car in autonomous mode (slight modification from Udacity's original file)
 * model.h5 containing a trained convolution neural network 
 * writeup_report.md summarizing the results (you are reading it)
 
@@ -47,6 +46,7 @@ python drive.py model.h5
 #### 3. Submission code is usable and readable
 
 The model.py file contains the code for training and saving the convolution neural network. The file shows the pipeline I used for training and validating the model, and it contains comments to explain how the code works.
+The drive.py is modified slightly from Udacity's provided file to convert image from RGB to BGR, in order to match the training samples that are loaded by OpenCV (BGR format)
 
 ### Model Architecture and Training Strategy
 
@@ -78,11 +78,6 @@ My model consists of a convolution neural network with the following layers from
 | RELU					|												|
 | BatchNorm				|												|
 | Dropout       	    | 0.5 for training                 	|
-| Convolution 3x3	    | 1x1 stride, VALID padding, outputs 3x32x64	|
-| RELU					|												|
-| BatchNorm				|												|
-| Max pooling	      	| 2x2 stride,  outputs 1x16x64 				    |
-| Dropout       	    | 0.5 for training                 	|
 | Fully connected		| output 100   									|
 | RELU					|												|
 | BatchNorm				|												|
@@ -110,7 +105,7 @@ The model was trained and validated on different data sets to ensure that the mo
 #### 3. Model parameter tuning
 
 The following parameters were used for training the model:
-* EPOCHs = 50
+* EPOCHs = 70 (EarlyStopping call back is used)
 * Batch size = 32
 * Learning rate = 0.001
 * Optimizer is 'adam'
@@ -131,6 +126,8 @@ I started with a convolution neural network model similar to the NVidia Network 
 
 
 After tuning the model to achieve low training loss and similar validation loss, the next step was to run the simulator to see how well the car was driving around track one. I did found a few spots where the vehicle fell off the track, for example in my case the car didn't perform well on the curve right before on the bridge, and a few curves that only have one side marking in track 1. To improve the model prediction in these cases, I collected some addtional data around those curves, especially along the road edges, in order to sure the car could learn how to stay away from the side of road.
+
+One more important finding (thanks to Udacity reviewer for pointing it out from my previous submission, i should have found this out earlier...) is that in the original drive.py the images are loaded in RGB while the training was done using opencv loading images (BGR), I then modified drive.py to switch channels to be consistent with training process.
 
 At the end of the process, the vehicle is able to drive autonomously around the track without leaving the road.
 
@@ -153,12 +150,18 @@ I then recorded the vehicle recovering from the left side and right sides of the
 Then I repeated this process on track two in order to get more data points.
 The data were then randomly divided into training samples (80% of data) and validation samples (20% of data). 
 Overall I have the following number of samples:
-    Number of training samples: 19884
-    Number of validation samples: 4972
+* Number of training samples: 19884
+* Number of validation samples: 4972
+
+Here is a histogram of the steering angles among all data collected:
+![alt text][image4]
 
 During the training process, data augmentation was applied with the following:
-1. images were flipped left-right with the output label (steering angle) also flipped direction (+ or -)
-2. left and right camera images were used by adding offset of 0.2 to steering angle.
-The above data augmentation was only applied for training samples (thus training samples become 19884*4 = 79536), but not on the validation samples.
+* images were flipped left-right with the output label (steering angle) also flipped direction (+ or -)
+* left and right camera images were used by adding offset of 0.2 to steering angle.
 
-I used this training data for training the model. The validation set helped determine if the model was over or under fitting. The number of epochs was selected based on the decay of loss values. I used an adam optimizer which can adaptively update individual parameter's learning rate.
+The above data augmentation was only applied for training samples (thus training samples become 19884*4 = 79536), but NO data augmentation was applied on the validation samples since i would like to test out the performance on 'real' samples.
+
+I used this training data for training the model. The validation set helped determine if the model was over or under fitting. The number of epochs was selected based on the decay of loss values. I used an adam optimizer which can adaptively update individual parameter's learning rate. EarlyStopping call back is used to terminate training earlier than max epochs if the losses become stable. Snapshot of each epoch was saved by using ModelCheckpoint call back.
+Plot of training history on train loss and validation loss values
+![alt text][image5]

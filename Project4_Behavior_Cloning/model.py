@@ -35,6 +35,7 @@ print("=====samples count (before data augmentation)=======")
 print("Number of training samples: {}".format(len(train_samples)))
 print("Number of validation samples: {}".format(len(validation_samples)))
 
+# define generator function, use 'use_augmentation' flag to toggle on/off data augmentations (flip, left/right cameras)
 def generator(samples, batch_size=32, use_augmentation = True):
     flagList = [0]*len(samples)
     if use_augmentation:
@@ -90,36 +91,33 @@ from keras.models import Sequential, Model
 from keras.layers import Flatten, Dense, Lambda, BatchNormalization, Dropout
 from keras.layers import Convolution2D, MaxPooling2D
 from keras.layers import Cropping2D
-from keras.applications.resnet50 import ResNet50
-from keras.applications.resnet50 import preprocess_input
-
 def CreateNvidiaNetwork():
-    dropRatio1 = 0.5 # discard 0.5
+    dropRatio1 = 0.5 # discard dropRatio(0.2)
     model = Sequential()
-    model.add(Cropping2D(cropping=((50, 20), (0, 0)),  input_shape=(160, 320, 3))) 
+    model.add(Cropping2D(cropping=((50, 20), (0, 0)),  input_shape=(160, 320, 3))) #input become 90X320X3
     model.add(Lambda(lambda x: x / 255.0 - 0.5))
-    #model.add(Convolution2D(24, (5, 5), subsample=(2,2), activation="relu")) 
+    #model.add(Convolution2D(24, (5, 5), subsample=(2,2), activation="relu")) #feature become 43X158X24
     model.add(Convolution2D(24, (5, 5),  activation="relu"))
     model.add(BatchNormalization())
     model.add(MaxPooling2D(pool_size = (2, 2)))
     model.add(Dropout(dropRatio1))
-    #model.add(Convolution2D(36, (5, 5), subsample=(2,2), activation="relu")) 
+    #model.add(Convolution2D(36, (5, 5), subsample=(2,2), activation="relu")) #feature become 20X77X36
     model.add(Convolution2D(36, (5, 5),  activation="relu"))
     model.add(BatchNormalization())
     model.add(MaxPooling2D(pool_size = (2, 2)))
     model.add(Dropout(dropRatio1))
-    #model.add(Convolution2D(48, (5, 5), subsample=(2,2), activation="relu")) 
+    #model.add(Convolution2D(48, (5, 5), subsample=(2,2), activation="relu")) #feature become 8X37X48
     model.add(Convolution2D(48, (5, 5),  activation="relu"))
     model.add(BatchNormalization())
     model.add(MaxPooling2D(pool_size = (2, 2)))
     model.add(Dropout(dropRatio1))
-    model.add(Convolution2D(64, (3, 3), activation="relu")) 
+    model.add(Convolution2D(64, (3, 3), activation="relu")) #feature become 6X35X64
     model.add(BatchNormalization())
     model.add(Dropout(dropRatio1))
-    model.add(Convolution2D(64, (3, 3), activation="relu")) 
-    model.add(BatchNormalization())
-    model.add(MaxPooling2D(pool_size = (2, 2)))
-    model.add(Dropout(dropRatio1))
+    #model.add(Convolution2D(64, (3, 3), activation="relu")) #feature become 4X33X64
+    #model.add(BatchNormalization())
+    #model.add(MaxPooling2D(pool_size = (2, 2)))
+    #model.add(Dropout(dropRatio1))
     model.add(Flatten())
     model.add(Dense(100, activation="relu"))
     model.add(BatchNormalization())
@@ -132,26 +130,25 @@ def CreateNvidiaNetwork():
     model.add(Dense(1))    
     return model
 
+# compile and train the model
 from keras import optimizers
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 model = CreateNvidiaNetwork()    
 model.compile(loss='mse', optimizer='adam')
 myBatchSize = 32
 train_generator = generator(train_samples, myBatchSize, use_augmentation = True)
 validation_generator = generator(validation_samples, myBatchSize, use_augmentation = False)
-
-trainHistory = model.fit_generator(train_generator, steps_per_epoch= int(len(train_samples)*4/myBatchSize),                                     validation_data=validation_generator, validation_steps=int(len(validation_samples)/myBatchSize),                                    epochs=50, verbose = 1)
-model.save("model.h5")
-#notes: to use this model in simulator, use run the provided drive.py like this in command line: 
-#       python drive.py model.h5
-#      then launch the simulator, and then select autonomous mode
-
-# save the training log to a pickle file
+trainHistory = model.fit_generator(train_generator, steps_per_epoch= int(len(train_samples)*4/myBatchSize), \
+                                    validation_data=validation_generator, validation_steps=int(len(validation_samples)/myBatchSize), \
+                                   epochs=70, verbose = 1,
+                                  callbacks=[EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=3),
+                                            ModelCheckpoint("model2-epoch-{epoch:02d}-valloss-{val_loss:.2f}.h5", monitor='val_loss', verbose=0, save_best_only=False)])
 import pickle
 with open("model-log1.pkl", "wb") as f:
     pickle.dump(trainHistory.history, f)
 
 
-### print the keys contained in the history object
+### load the saved history log
 with open("model-log1.pkl", "rb") as f:
     history = pickle.load(f)
 print(history.keys())
