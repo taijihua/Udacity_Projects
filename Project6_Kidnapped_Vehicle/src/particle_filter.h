@@ -115,6 +115,9 @@ public:
 	const bool initialized() const {
 		return is_initialized;
 	}
+private:
+	double multiv_prob(double sig_x, double sig_y, double x_obs, double y_obs,
+	        double mu_x, double mu_y);
 };
 
 
