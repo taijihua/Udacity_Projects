@@ -24,7 +24,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
-	num_particles = 1000;  // TODO: Set the number of particles
+	num_particles = 1e3;  // TODO: Set the number of particles
 	std::default_random_engine gen; // from <random>
 	std::normal_distribution<double> dist_x(x, std[0]); // from <random>
 	std::normal_distribution<double> dist_y(y, std[1]); // from <random>
@@ -91,11 +91,12 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 		dist_min = std::numeric_limits<double>::max();
 		for(uint j = 0; j<predicted.size(); j++)
 		{
-			double dist;
-			dist = (sqrt(pow(predicted[j].x-observations[i].x, 2)+pow(predicted[j].y-observations[i].y, 2)));
-			if (dist<dist_min)
+			double distance;
+			//distance = (sqrt(pow(predicted[j].x-observations[i].x, 2)+pow(predicted[j].y-observations[i].y, 2)));
+			distance = dist(predicted[j].x, predicted[j].y, observations[i].x, observations[i].y);
+			if (distance<dist_min)
 			{
-				dist_min = dist;
+				dist_min = distance;
 				id_match = predicted[j].id;
 			}
 		}
@@ -117,6 +118,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
 	double sum_weight = 0;
+
+	//debug
+	//cout<<"observation vector size: "<<observations.size()<<endl;
+
 	for(int p = 0; p < num_particles; p++) //loop through particles to update each particle weight
 	{
 		// current particle is: particles[p]
@@ -146,7 +151,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		{
 			int id;
 			double x, y;
-			if(pow(map_landmarks.landmark_list[i].x_f-xp, 2)+pow(map_landmarks.landmark_list[i].y_f-yp, 2)< pow(sensor_range, 2))
+			//if(pow(map_landmarks.landmark_list[i].x_f-xp, 2)+pow(map_landmarks.landmark_list[i].y_f-yp, 2)< pow(sensor_range, 2))
+			if(dist(xp, yp, map_landmarks.landmark_list[i].x_f, map_landmarks.landmark_list[i].y_f)<sensor_range)
 			{
 				id = map_landmarks.landmark_list[i].id_i;
 				x = map_landmarks.landmark_list[i].x_f;
@@ -160,31 +166,31 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		double weight;
 		weight = 1; //initialize weight to 1
 
-		cout<<obs_newcoordinate<<endl;
 
 		for(uint i=0; i< obs_newcoordinate.size(); i++)
 		{
-			//to do: calculate weight based on multi-variate gaussian
-			float landmarkx = map_landmarks.landmark_list[obs_newcoordinate[i].id-1].x_f;
-			float landmarky = map_landmarks.landmark_list[obs_newcoordinate[i].id-1].y_f;
+			//calculate weight based on multi-variate gaussian
+			double landmarkx = map_landmarks.landmark_list[obs_newcoordinate[i].id-1].x_f;
+			double landmarky = map_landmarks.landmark_list[obs_newcoordinate[i].id-1].y_f;
 
 			weight *= multiv_prob(std_landmark[0], std_landmark[1], obs_newcoordinate[i].x, obs_newcoordinate[i].y, landmarkx, landmarky);
 		}
 
 		//update particle weight to the measurement likelihood X prior (previous weight)
 		particles[p].weight = weight;
+		weights[p] = particles[p].weight;
 		sum_weight += weight;
 	}
 
-	//debug
-	cout<<"sum_weight: "<<sum_weight<<endl;
+//	//debug
+//	cout<<"sum_weight: "<<sum_weight<<endl;
 
-	//normalize the weight
-	for(int p = 0; p < num_particles; p++)
-	{
-		particles[p].weight /=sum_weight;
-		weights[p] = particles[p].weight; //store all weights in vector
-	}
+//	//normalize the weight, this seems unnecessary since the resample step will normalize the probability anyway
+//	for(int p = 0; p < num_particles; p++)
+//	{
+//		particles[p].weight /=sum_weight;
+//		weights[p] = particles[p].weight; //store all weights in vector
+//	}
 
 
 }
@@ -232,7 +238,7 @@ void ParticleFilter::resample() {
 //	}
 //	particles = newParticles;
 
-	//==========Method B: use discrete_distribution=================
+	//==========Method B: use std::discrete_distribution=================
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	std::discrete_distribution<> d(weights.begin(), weights.end());
@@ -242,6 +248,7 @@ void ParticleFilter::resample() {
 		index = d(gen);
 		newParticles.push_back(particles[index]);
 	}
+	particles = newParticles;
 	//=============================================================
 
 //	//reset all weights back to 1
