@@ -8,6 +8,8 @@
 #include "helpers.h"
 #include "json.hpp"
 
+#include <algorithm> //added by me, to use max()
+
 // for convenience
 using nlohmann::json;
 using std::string;
@@ -97,8 +99,66 @@ int main() {
            * TODO: define a path made up of (x,y) points that the car will visit
            *   sequentially every .02 seconds
            */
+          //simple test, move vehicle forward
+//          double dist_inc = 0.5;
+//          for (int i = 0; i < 50; ++i) {
+//            next_x_vals.push_back(car_x+(dist_inc*i)*cos(deg2rad(car_yaw)));
+//            next_y_vals.push_back(car_y+(dist_inc*i)*sin(deg2rad(car_yaw)));
+//          }
+          double pos_x;
+          double pos_y;
+          double angle;
+          int path_size = previous_path_x.size();
+          if (path_size>10) //only keep up to 5 previous history points
+        	  path_size=10;
+          for (int i = 0; i < path_size; ++i) {
+            next_x_vals.push_back(previous_path_x[i]);
+            next_y_vals.push_back(previous_path_y[i]);
+          }
+
+          if (path_size == 0) {
+            pos_x = car_x;
+            pos_y = car_y;
+            angle = deg2rad(car_yaw);
+          } else {
+            pos_x = previous_path_x[path_size-1];
+            pos_y = previous_path_y[path_size-1];
+
+            double pos_x2 = previous_path_x[path_size-2];
+            double pos_y2 = previous_path_y[path_size-2];
+            angle = atan2(pos_y-pos_y2,pos_x-pos_x2);
+          }
+
+          //to do (follow the car before you):
+          //    1. find map waypoints after current position
+          //    2. find current position s and d
+          //    3. propose path that keeps current d but advances s
+          //    4. if path intersect with any vehicles around?
+          //int nextPt = NextWaypoint(pos_x, pos_y, angle, map_waypoints_x, map_waypoints_y);
+          double pos_s;
+          double pos_d;
+          vector<double> sd = getFrenet(pos_x, pos_y, angle, map_waypoints_x, map_waypoints_y);
+          pos_s = sd[0];
+          pos_d = sd[1];
+
+          std::cout<<"current pos_x, pos_y: "<<pos_x<<" "<<pos_y<<std::endl;
+          std::cout<<"current pos_s: "<<pos_s<<std::endl;
+
+          double s_inc = 0.44;  // 50mph -> 22.352 m/s -> 0.447 m/0.02s
+          for (int i = 0; i < 50-path_size; ++i) {
+        	pos_s += s_inc;
+        	pos_d = pos_d;
+        	vector<double> xy = getXY(pos_s, pos_d, map_waypoints_s,  map_waypoints_x, map_waypoints_y);
+            next_x_vals.push_back(xy[0]);
+            next_y_vals.push_back(xy[1]);
+          }
+          std::cout<<"target pos_s: "<<pos_s<<std::endl;
+//          std::cout<<"Planned Path:===== ";
+//          for(int i=0;i<next_x_vals.size();i++)
+//        	  std::cout<<next_x_vals[i]<<" "<<next_y_vals[i]<<std::endl;
 
 
+          //===================original Udacity code below==========
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
 
