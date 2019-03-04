@@ -779,6 +779,10 @@ string
 -
 vector
 -
+Eigen-3.3/Eigen/Core
+/home/junhua/Udacity_Projects/Project7_Highway_Driving/src/Eigen-3.3/Eigen/Core
+Eigen-3.3/Eigen/QR
+/home/junhua/Udacity_Projects/Project7_Highway_Driving/src/Eigen-3.3/Eigen/QR
 
 /home/junhua/Udacity_Projects/Project7_Highway_Driving/src/json.hpp
 algorithm
@@ -855,6 +859,18 @@ helpers.h
 /home/junhua/Udacity_Projects/Project7_Highway_Driving/src/helpers.h
 json.hpp
 /home/junhua/Udacity_Projects/Project7_Highway_Driving/src/json.hpp
+algorithm
+-
+spline.h
+/home/junhua/Udacity_Projects/Project7_Highway_Driving/src/spline.h
+
+/home/junhua/Udacity_Projects/Project7_Highway_Driving/src/spline.h
+cstdio
+-
+cassert
+-
+vector
+-
 algorithm
 -
 
