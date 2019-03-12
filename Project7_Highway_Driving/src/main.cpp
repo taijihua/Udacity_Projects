@@ -102,30 +102,28 @@ int main() {
            * TODO: define a path made up of (x,y) points that the car will visit
            *   sequentially every .02 seconds
            */
-          const double MAX_V = 49.5/2.24; //my speed limit on mph
-		  const double DELTA_T = 0.02; //0.02 second per path point
-		  const double MAX_ACC = 10*0.7; //m/s^2, use 70% to give some buffer room
-		  const double MAX_JERK = 10*0.8; //m/s^3
 
-		  int curr_lane; //lane = 0, 1, 2
-		  curr_lane = car_d/4;  //determine current lane based on vehicle d
-		  static int target_lane = curr_lane; //lane = 0, 1, 2 the lane the vehicle will switch to or stay on
+          const double MAX_V = 49.5/2.24; //speed limit in m/s
+          const double DELTA_T = 0.02; //0.02 second per path point
+          const double MAX_ACC = 10*0.7; //max acceleration in m/s^2, use 70% to give some buffer room
+          const double MAX_JERK = 10*0.8; //max jerk in m/s^3, currently NOT USED
 
-		  std::cout<<"current lane: "<<curr_lane<<std::endl;
+          int curr_lane; //current lane, = 0, 1, 2
+          curr_lane = car_d/4;  //determine current lane based on vehicle's d
+          static int target_lane = curr_lane; //target lane = 0, 1, 2, it's the lane vehicle will switch to or stay on
+          //std::cout<<"current lane: "<<curr_lane<<std::endl;
+          static state curr_state = keep_lane;
 
-		  static state curr_state = keep_lane;
-                    //double s_inc= ref_vel*1600.0/3600.0*deta_T; // 50mph -> 22.352 m/s -> 0.447 m/0.02s
-
-          double pos_x;
-          double pos_y;
-          double angle;
+          //double pos_x;
+          //double pos_y;
+          //double angle;
           int prev_path_size = previous_path_x.size(); //only keep up to 5 previous history points
           if(prev_path_size>5)
-        	  prev_path_size = 5;
-          //generate trajectory based on spline function
-		  vector<double> ptsx;
-		  vector<double> ptsy;
-		  double ref_x = car_x;
+              prev_path_size = 5;
+
+          vector<double> ptsx; //waypoints for trajectory generation
+          vector<double> ptsy; //waypoints for trajectory generation
+          double ref_x = car_x;
 		  double ref_y = car_y;
 		  double ref_yaw = deg2rad(car_yaw);
 		  double ref_v = car_speed;
@@ -140,7 +138,7 @@ int main() {
 			  ptsy.push_back(prev_car_y);
 			  ptsy.push_back(car_y);
 		  }
-		  else
+		  else // use previous path's end point as reference
 		  {
 			  ref_x = previous_path_x[prev_path_size-1];
 			  ref_y = previous_path_y[prev_path_size-1];
@@ -156,52 +154,36 @@ int main() {
 			  ptsy.push_back(ref_y);
 		  }
 
-          int nPts = 50-prev_path_size;  // append n points from (pos_s, pos_d) to (target_s, target_d)
+          int nPts = 50-prev_path_size;  // append nPts points to make up total 50 points
 
-          // Decision making based on sensor data
-          //   rule A: if no object in front (same lane), cruise at ref_vel or ramp up speed to ref_vel
-          //           if obj in front and dist / (my_vel-obj_vel) < 3 sec,
-          //                if no object on left:
-          //                      change lane to left
-          //                elif no object on right:
-          //                      change lane to right
-          //                else:
-          //                      slow down to ensure time to collision 3 sec
-
-          // for stay in lane
-          // speed target is MAX_V
-          // update speed target, if any car in front with time_to_collision < 1 second ((obj_s - curr_s)/speed diff)
-          // update speed target if MAX_ACC and MAX_JERK is violated
+          //  based on sensor data, determine traffic on left/right, and target velocity on each lane
           double target_v[3];  // target speed at the end of path planning (1 second later)
-          bool left_traffic, right_traffic; // flag if there is traffic to prevent turn left, or right
+          bool left_traffic, right_traffic; // flag if there is traffic to prevent move left, or right
           left_traffic = false;
           right_traffic = false;
-          target_v[0] = std::min(MAX_V, ref_v+MAX_ACC);  //initial target speed
-          target_v[1] = std::min(MAX_V, ref_v+MAX_ACC);  //initial target speed
-          target_v[2] = std::min(MAX_V, ref_v+MAX_ACC);  //initial target speed
+          target_v[0] = std::min(MAX_V, ref_v+MAX_ACC);  //initial value for target speed
+          target_v[1] = std::min(MAX_V, ref_v+MAX_ACC);  //initial value for target speed
+          target_v[2] = std::min(MAX_V, ref_v+MAX_ACC);  //initial value for target speed
           for(int i= 0; i< sensor_fusion.size(); i++)
           {
-            //std::cout<<sensor_fusion[i]<<", ";
         	  auto obj = sensor_fusion[i];
-//        	  if(obj["s"]<target_s && obj["s"]>=pos_s && fabs(obj["d"]-target_d)<2)
-//        		  target_s = obj["s"];
         	  double obj_vx = obj[3];
         	  double obj_vy = obj[4];
         	  double obj_v = sqrt(obj_vx*obj_vx+obj_vy*obj_vy);
         	  double obj_s = obj[5];
         	  double obj_d = obj[6];
         	  //std::cout<<" obj_s = "<<obj_s<<std::endl;
-        	  double ttc = 2.5; //time to collision threshold, in second, manual tweek this to determine car following distance
+        	  double ttc = 2.7; //time to collision threshold, in second, manual tweek this to determine car following distance
         	  double safe_dist = 3; //safe distance to keep away from front vehicle
-        	  // if current lane has slow traffic ahead
-        	  //std::cout<<"obj_V = "<<obj_v<< ", obj_d = "<<obj_d<<std::endl;
+
+        	  // if current lane has slow traffic ahead, update target speed
         	  if(obj_v<target_v[curr_lane] && fabs(obj_d-(curr_lane*4+2))<2 && obj_s>car_s &&
         			 ((obj_s-car_s)/(target_v[curr_lane]-obj_v)<ttc ||(obj_s-car_s)<safe_dist))
         	  {
         	  	  target_v[curr_lane] = obj_v;
         	  	  //std::cout<<"!! Update target_s to "<<target_s<<std::endl;
         	  }
-        	  // if left lane has slow traffic ahead, or faster traffic behind
+        	  // if left lane has slow traffic ahead, update target speed, and also update left traffic flag if object closeby
         	  if(curr_lane>0)
         	  {
         		  if (fabs(obj_d-((curr_lane-1)*4+2))<2) //left lane has traffic
@@ -210,13 +192,13 @@ int main() {
         			  // slow traffic ahead
         			  if(obj_s>=car_s && obj_v<speed &&
         					  (((obj_s-car_s)/(speed-obj_v)<ttc)||(obj_s-car_s)<safe_dist))
-        				  target_v[curr_lane-1] = obj_v; // set lower seep target for left lane
+        				  target_v[curr_lane-1] = obj_v; // set lower speed target for left lane
         			  //if((obj_s<car_s && obj_v>speed && (car_s-obj_s)/(obj_v-speed)<ttc))
         			  if(fabs(obj_s-car_s)<8)
         				  left_traffic = true;
         		  }
         	  }
-        	  // if right lane has slow traffic ahead, or faster traffic behind
+        	  // if right lane has slow traffic ahead
         	  if(curr_lane<2)
         	  {
         		  if (fabs(obj_d-((curr_lane+1)*4+2))<2) //left lane has traffic
@@ -233,6 +215,7 @@ int main() {
         	  }
 
           }
+          /*
           std::cout<<"curr_lane = "<<curr_lane<<std::endl;
           std::cout<<"target speeds: ";
           for(int i=0;i<3;i++)
@@ -240,8 +223,7 @@ int main() {
           std::cout<<std::endl;
           std::cout<<"left_traffic = "<<left_traffic<<std::endl;
           std::cout<<"right_traffic = "<<right_traffic<<std::endl;
-
-          vector<double> target_s(3), target_d(3); // set target way points
+          */
 
           //state transitions
           if (curr_state == keep_lane)
@@ -289,7 +271,7 @@ int main() {
 
           }
 
-
+          vector<double> target_s(3), target_d(3); // set target way points
 		  target_s[0] = car_s+30;
 		  target_s[1] = car_s+60;
 		  target_s[2] = car_s+90;
@@ -297,22 +279,7 @@ int main() {
 		  target_d[1] = target_d[0];
 		  target_d[2] = target_d[0];
 
-//          std::cout<<"target_s: ";
-//          for(int i=0;i<3;i++)
-//          {
-//        	  std::cout<<target_s[i]<<"; ";
-//          }
-//          std::cout<<std::endl;
-//          std::cout<<"target_d: ";
-//			for(int i=0;i<3;i++)
-//			{
-//			  std::cout<<target_d[i]<<"; ";
-//			}
-//			std::cout<<std::endl;
-
-
           // continue adding waypoints for path planning
-
           vector<double> next_wp0 = getXY(target_s[0], target_d[0], map_waypoints_s, map_waypoints_x, map_waypoints_y);
           vector<double> next_wp1 = getXY(target_s[1], target_d[1], map_waypoints_s, map_waypoints_x, map_waypoints_y);
           vector<double> next_wp2 = getXY(target_s[2], target_d[2], map_waypoints_s, map_waypoints_x, map_waypoints_y);
@@ -332,17 +299,6 @@ int main() {
         	  ptsx[i] = (shift_x*cos(0-ref_yaw)-shift_y*sin(0-ref_yaw));
         	  ptsy[i] = (shift_x*sin(0-ref_yaw)+shift_y*cos(0-ref_yaw));
           }
-          //check data
-          for(double i:ptsx)
-          {  std::cout<<i<<"; ";
-
-          }
-          std::cout<<std::endl;
-          for(double i:ptsy)
-			{  std::cout<<i<<"; ";
-
-			}
-          std::cout<<std::endl;
 
           //create spline
           tk::spline s;
@@ -363,23 +319,22 @@ int main() {
 		  v0 = ref_v;
           double acc;
 		  acc = (target_v[target_lane]-v0)*double(nPts)/50; // default 1 second interval
-		  std::cout<<"current state: "<<curr_state<<std::endl;
-		  std::cout<<"target_lane: "<<target_lane<<", target_v[target_lane] = "<<target_v[target_lane]<<std::endl;
+		  //std::cout<<"current state: "<<curr_state<<std::endl;
+		  //std::cout<<"target_lane: "<<target_lane<<", target_v[target_lane] = "<<target_v[target_lane]<<std::endl;
           acc = std::min(acc, MAX_ACC);
           acc = std::max(acc, -MAX_ACC);
-          std::cout<<"car_speed = "<<car_speed<<std::endl;
-          std::cout<<"acceleration = "<<acc<<std::endl;
+          //std::cout<<"car_speed = "<<car_speed<<std::endl;
+          //std::cout<<"acceleration = "<<acc<<std::endl;
           for(int i=1; i<=nPts; i++)
           {
 
-        	  //v0 = target_v[target_lane];
-        	  v0 = ref_v+(target_v[target_lane]-ref_v)*i/nPts;
-
+        	  //linearly ramp up the speed to target_v
+        	  //v0 = ref_v+(target_v[target_lane]-ref_v)*i/nPts;
         	  //std::cout<<"v0: "<<v0<<std::endl;
-        	  //double N = (target_dist/(.02*target_v[target_lane]));
-        	  double N = (target_dist/(DELTA_T*v0));
-        	  double x_point = x_add_on+(target_x)/N;
-        	  //double x_point = x_add_on+v0*DELTA_T+0.5*acc*DELTA_T*DELTA_T;
+        	  //double N = (target_dist/(DELTA_T*v0));
+        	  //double x_point = x_add_on+(target_x)/N;
+
+        	  double x_point = x_add_on+v0*DELTA_T+0.5*acc*DELTA_T*DELTA_T;
         	  v0 = v0+acc*DELTA_T;
 
         	  x_add_on = x_point;
@@ -390,23 +345,11 @@ int main() {
        	  	  double temp_y = y_point;
         	  x_point = (temp_x*cos(ref_yaw)-temp_y*sin(ref_yaw));
         	  y_point = (temp_x*sin(ref_yaw)+temp_y*cos(ref_yaw));
-        	  double est_speed;
-//        	  if(next_x_vals.size()>1)
-//        		  {
-//        		  	  est_speed= sqrt(pow(y_point+ref_y-next_y_vals.back(), 2)+pow(x_point+ref_x-next_x_vals.back(), 2))/DELTA_T;
-//        		  	  std::cout<<"est speed = "<<est_speed<<std::endl;
-//        		  }
+
         	  next_x_vals.push_back(x_point+ref_x);
         	  next_y_vals.push_back(y_point+ref_y);
           }
-//          std::cout<<"check final path points: "<<std::endl;
-//          for(double i:next_x_vals)
-//        	  std::cout<<i<<"; ";
-//          std::cout<<std::endl;
-//          for(double i:next_y_vals)
-//			  std::cout<<i<<"; ";
-//			std::cout<<std::endl;
-          std::cout<<"==========end one cycle========"<<std::endl;
+          //std::cout<<"==========end one cycle========"<<std::endl;
           //===================original Udacity code below==========
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
