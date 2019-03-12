@@ -159,7 +159,7 @@ vector<double> getXY(double s, double d, const vector<double> &maps_s,
   return {x,y};
 }
 
-//==========functions above were from Original Udacity code, below are code that i added===========
+//==========additional functions===========
 //vector<double> JMT(vector<double> &start, vector<double> &end, double T) {
 //  /**
 //   * Calculate the Jerk Minimizing Trajectory that connects the initial state
