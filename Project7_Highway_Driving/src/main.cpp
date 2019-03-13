@@ -173,16 +173,19 @@ int main() {
         	  double obj_s = obj[5];
         	  double obj_d = obj[6];
         	  //std::cout<<" obj_s = "<<obj_s<<std::endl;
-        	  double ttc = 2.7; //time to collision threshold, in second, manual tweek this to determine car following distance
+        	  double ttc = 3; //time to collision threshold, in second, manual tweek this to determine car following distance
         	  double safe_dist = 3; //safe distance to keep away from front vehicle
+        	  double too_close = 2; // slow down if < too_close distance
 
         	  // if current lane has slow traffic ahead, update target speed
-        	  if(obj_v<target_v[curr_lane] && fabs(obj_d-(curr_lane*4+2))<2 && obj_s>car_s &&
+        	  if(obj_v<=target_v[curr_lane] && fabs(obj_d-(curr_lane*4+2))<2 && obj_s>car_s &&
         			 ((obj_s-car_s)/(target_v[curr_lane]-obj_v)<ttc ||(obj_s-car_s)<safe_dist))
         	  {
         	  	  target_v[curr_lane] = obj_v;
         	  	  //std::cout<<"!! Update target_s to "<<target_s<<std::endl;
         	  }
+        	  if(fabs(obj_d-(curr_lane*4+2))<2 && obj_s>car_s && (obj_s-car_s)<too_close)
+        		  target_v[curr_lane] = obj_v-1;
         	  // if left lane has slow traffic ahead, update target speed, and also update left traffic flag if object closeby
         	  if(curr_lane>0)
         	  {
@@ -193,6 +196,8 @@ int main() {
         			  if(obj_s>=car_s && obj_v<speed &&
         					  (((obj_s-car_s)/(speed-obj_v)<ttc)||(obj_s-car_s)<safe_dist))
         				  target_v[curr_lane-1] = obj_v; // set lower speed target for left lane
+        			  if(obj_s>car_s && (obj_s-car_s)<too_close)
+        			      target_v[curr_lane-1] = obj_v-1;
         			  //if((obj_s<car_s && obj_v>speed && (car_s-obj_s)/(obj_v-speed)<ttc))
         			  if(fabs(obj_s-car_s)<8)
         				  left_traffic = true;
@@ -208,6 +213,8 @@ int main() {
 					  if(obj_s>=car_s && obj_v<speed &&
 							  (((obj_s-car_s)/(speed-obj_v)<ttc)||(obj_s-car_s)<safe_dist))
 						  target_v[curr_lane+1] = obj_v; // set lower seep target for right lane
+					  if(obj_s>car_s && (obj_s-car_s)<too_close)
+					      target_v[curr_lane+1] = obj_v-1;
 					  //if((obj_s<car_s && obj_v>speed && (car_s-obj_s)/(obj_v-speed)<ttc)) // disable lane change
 					  if(fabs(obj_s-car_s)<8)
 						  right_traffic = true;
@@ -329,13 +336,13 @@ int main() {
           {
 
         	  //linearly ramp up the speed to target_v
-        	  //v0 = ref_v+(target_v[target_lane]-ref_v)*i/nPts;
+        	  v0 = ref_v+(target_v[target_lane]-ref_v)*i/nPts;
         	  //std::cout<<"v0: "<<v0<<std::endl;
-        	  //double N = (target_dist/(DELTA_T*v0));
-        	  //double x_point = x_add_on+(target_x)/N;
+        	  double N = (target_dist/(DELTA_T*v0));
+        	  double x_point = x_add_on+(target_x)/N;
 
-        	  double x_point = x_add_on+v0*DELTA_T+0.5*acc*DELTA_T*DELTA_T;
-        	  v0 = v0+acc*DELTA_T;
+//        	  double x_point = x_add_on+v0*DELTA_T+0.5*acc*DELTA_T*DELTA_T;
+//        	  v0 = v0+acc*DELTA_T;
 
         	  x_add_on = x_point;
 
