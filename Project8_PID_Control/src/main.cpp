@@ -33,28 +33,35 @@ string hasData(string s) {
 int main() {
   uWS::Hub h;
 
-  PID pid;
-  static PID pid_speed; //somehow pid_speed is not passed to loop, had to use static declaration
-  static uint ct = 0;
+  PID pid;  // PID controller for steering
+  static PID pid_speed; //PID controller for speed, use static declaration to pass into the onMessage() function
+  static uint ct = 0;  //count of iterations, used for updating parameters in twiddle mode
   /**
    * TODO: Initialize the pid variable.
    */
-
   //implement twiddle
-  static double p[3] = {0, 0, 0};
-  static double dp[3] = {1, 1, 1};
-  pid.Init(0, 0, 0);
-  pid_speed.Init(0, 0, 0, 50);
-  static double best_err = std::numeric_limits<double>::infinity(); //first set to infinity
-  static int ix = 0;
-  static bool tryAgain = true;
+  static bool twiddleMode = true;  //change this flag to turn on/off twiddle mode
 
-  static bool twiddleMode = false;  //change this flag to turn on/off twiddle mode
+  //static double p[3] = {0, 0, 0};  //initial PID parameters to kickoff twiddle
+  static double p[3] = {0.787197, 0, 2.73721};
+  static double dp[3] = {0.5, 0.5, 0.5}; //initial search step for PID parameters
+  static double bestP[3] = {0, 0, 0}; // to store the best PID parameters
+
+  static double best_err = std::numeric_limits<double>::infinity(); //first set best_err to infinity
+  static int ix = 0; // index of parameter to be updated in twiddle, value = 0, 1, 2
+  static bool tryAgain = true; //flag indicating a second trial in twiddle mode
+
   if(!twiddleMode)
   {
 	  //pid.Init(2.0408, 0, 7.72598);
-	  pid.Init(0.1, -0.9, 1);
+	  //pid.Init(0.1, -0.9, 1);
+	  //pid.Init(0.821031, 0, 2.44292);
+	  pid.Init(0.787197, 0, 2.73721);
 	  pid_speed.Init(0, 0, 0, 50);
+  }
+  else
+  {
+	  pid.Init(p[0], p[1], p[2]);
   }
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
@@ -83,13 +90,17 @@ int main() {
            * NOTE: Feel free to play around with the throttle and speed.
            *   Maybe use another PID controller to control the speed!
            */
-          ct+=1;
+          ct += 1; //increment iteration count
           pid.UpdateError(cte);
+          pid.TotalError();
+          //std::cout<<"cte: "<<cte<<", ";
           steer_value = pid.CalcOutput();
+          //steer_value = deg2rad(steer_value);
 
           double throttle_value=0.3;
-          pid_speed.UpdateError(speed);
-          throttle_value = pid_speed.CalcOutput();
+          //pid_speed.UpdateError(speed);
+          //pid_speed.TotalError();
+          //throttle_value = pid_speed.CalcOutput();
           
           // DEBUG
 //          std::cout<<"======="<<std::endl;
@@ -109,15 +120,18 @@ int main() {
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           //reset between iterations
-          if(ct%100==0 && twiddleMode)
+          if(ct%200==0 && twiddleMode)  // if twiddle mode, update parameters every 100 iterations
           {
-        	  int it = ct/100;
+        	  int it = ct/200;
         	  double err = pid.TotalError();
-        	  std::cout<<"===PID coefficients: ["<<p[0]<<", "<<p[1]<<", "<<p[2]<<"]"<<std::endl;
-        	  std::cout<<"===dp: ["<<dp[0]<<", "<<dp[1]<<", "<<dp[2]<<"]"<<std::endl;
+        	  std::cout<<"===========iteration: "<<it<<std::endl;
+        	  std::cout<<"Last PID coefficients: ["<<p[0]<<", "<<p[1]<<", "<<p[2]<<"]"<<std::endl;
+        	  std::cout<<"dp: ["<<dp[0]<<", "<<dp[1]<<", "<<dp[2]<<"]"<<std::endl;
         	  if(it==1) //first round is [0, 0, 0]
         	  {
         		  best_err = err;
+        		  for(int i=0;i<3;i++)
+        			  bestP[i] = p[i];
         		  p[ix] += dp[ix];
 				  pid.Init(p[0], p[1], p[2]);
         	  }
@@ -126,6 +140,8 @@ int main() {
 				  if (err<best_err)
 				  {
 					  best_err = err;
+					  for(int i=0;i<3;i++)
+					      bestP[i] = p[i];
 					  dp[ix] *= 1.1;
 					  ix = (ix+1)%3;
 
@@ -150,7 +166,8 @@ int main() {
 					  tryAgain = true;
 				  }
 			  }
-        	  std::cout<<"===currentError: "<<err<<" bestError: "<<best_err<<std::endl;
+        	  std::cout<<"currentError: "<<err<<" bestError: "<<best_err<<std::endl;
+        	  std::cout<<"best PID coefficients: ["<<bestP[0]<<", "<<bestP[1]<<", "<<bestP[2]<<"]"<<std::endl;
 
         	  if(dp[0]+dp[1]+dp[2]<0.01)
         		  return;
