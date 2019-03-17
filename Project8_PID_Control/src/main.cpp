@@ -36,33 +36,38 @@ int main() {
   PID pid;  // PID controller for steering
   static PID pid_speed; //PID controller for speed, use static declaration to pass into the onMessage() function
   static uint ct = 0;  //count of iterations, used for updating parameters in twiddle mode
-  /**
-   * TODO: Initialize the pid variable.
-   */
-  //implement twiddle
-  static bool twiddleMode = true;  //change this flag to turn on/off twiddle mode
+  //pid.Init(2.0408, 0, 7.72598);
+  //pid.Init(0.1, -0.9, 1);
+  //pid.Init(0.821031, 0, 2.44292);
+  //pid.Init(0.787197, 0, 2.73721);
+  //pid.Init(0.239278, 0, 2.94026);
+  //pid.Init(0.239278, 0, 2.61221);
+  pid.Init(0.239278, 0, 3.36108); //from twiddle algo with best err
+  //pid_speed.Init(0, 0, 0, 50);
+  pid_speed.Init(5.75527, 0.00735012, -0.0515436, 25); //from twiddle algo with best err
 
-  //static double p[3] = {0, 0, 0};  //initial PID parameters to kickoff twiddle
-  static double p[3] = {0.787197, 0, 2.73721};
-  static double dp[3] = {0.5, 0.5, 0.5}; //initial search step for PID parameters
+  //implement twiddle
+  static bool twiddleMode = false;  //change this flag to turn on/off twiddle mode
+  ///====================The following section defines parameters only used in twiddle mode==========
+  static PID& pid_twiddle = pid;  //reference to the pid controller for twiddle algorithm, value can be either pid or pid_speed
+  //static PID& pid_twiddle = pid_speed;  //reference to the pid controller for twiddle algorithm, value can be either pid or pid_speed
+  static const double targetVal = 0.0;  // target value, if steering use 0, if speed use 50
+
+  static double p[3] = {0, 0, 0};  //initial PID parameters to kickoff twiddle
+  static double dp[3] = {1, 1, 1}; //initial search step for PID parameters
+  //static double p[3] = {0.239278, 0, 2.61221};
+  //static double dp[3] = {1, 1, 1}; //initial search step for PID parameters
   static double bestP[3] = {0, 0, 0}; // to store the best PID parameters
 
   static double best_err = std::numeric_limits<double>::infinity(); //first set best_err to infinity
   static int ix = 0; // index of parameter to be updated in twiddle, value = 0, 1, 2
   static bool tryAgain = true; //flag indicating a second trial in twiddle mode
 
-  if(!twiddleMode)
+  if(twiddleMode)
   {
-	  //pid.Init(2.0408, 0, 7.72598);
-	  //pid.Init(0.1, -0.9, 1);
-	  //pid.Init(0.821031, 0, 2.44292);
-	  pid.Init(0.787197, 0, 2.73721);
-	  pid_speed.Init(0, 0, 0, 50);
+	  pid_twiddle.Init(p[0], p[1], p[2], targetVal);
   }
-  else
-  {
-	  pid.Init(p[0], p[1], p[2]);
-  }
+  //=================== End of twiddle parameter definitions=======
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
@@ -98,9 +103,9 @@ int main() {
           //steer_value = deg2rad(steer_value);
 
           double throttle_value=0.3;
-          //pid_speed.UpdateError(speed);
-          //pid_speed.TotalError();
-          //throttle_value = pid_speed.CalcOutput();
+          pid_speed.UpdateError(speed);
+          pid_speed.TotalError();
+          throttle_value = pid_speed.CalcOutput();
           
           // DEBUG
 //          std::cout<<"======="<<std::endl;
@@ -115,15 +120,16 @@ int main() {
           json msgJson;
           msgJson["steering_angle"] = steer_value;
 
-          msgJson["throttle"] = 0.6;  //0.3
-          //msgJson["throttle"] = throttle_value;
+          //msgJson["throttle"] = 0.3;  //0.3
+          msgJson["throttle"] = throttle_value;
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          //reset between iterations
-          if(ct%200==0 && twiddleMode)  // if twiddle mode, update parameters every 100 iterations
+
+          //reset between twiddle iterations
+          if(ct%200==0 && twiddleMode)  // if twiddle mode, update parameters every 200 iterations and reset simulation to start
           {
         	  int it = ct/200;
-        	  double err = pid.TotalError();
+        	  double err = pid_twiddle.TotalError();
         	  std::cout<<"===========iteration: "<<it<<std::endl;
         	  std::cout<<"Last PID coefficients: ["<<p[0]<<", "<<p[1]<<", "<<p[2]<<"]"<<std::endl;
         	  std::cout<<"dp: ["<<dp[0]<<", "<<dp[1]<<", "<<dp[2]<<"]"<<std::endl;
@@ -133,7 +139,7 @@ int main() {
         		  for(int i=0;i<3;i++)
         			  bestP[i] = p[i];
         		  p[ix] += dp[ix];
-				  pid.Init(p[0], p[1], p[2]);
+        		  pid_twiddle.Init(p[0], p[1], p[2], targetVal);
         	  }
         	  else //other rounds go here
 			  {
@@ -146,13 +152,13 @@ int main() {
 					  ix = (ix+1)%3;
 
 					  p[ix] += dp[ix];
-					  pid.Init(p[0], p[1], p[2]);
+					  pid_twiddle.Init(p[0], p[1], p[2], targetVal);
 					  tryAgain = true;
 				  }
 				  else if (tryAgain)
 				  {
 					  p[ix] -= 2 * dp[ix];
-					  pid.Init(p[0], p[1], p[2]);
+					  pid_twiddle.Init(p[0], p[1], p[2], targetVal);
 					  tryAgain = false;
 				  }
 				  else
@@ -162,14 +168,14 @@ int main() {
 					  ix = (ix+1)%3;
 
 					  p[ix] += dp[ix];
-					  pid.Init(p[0], p[1], p[2]);
+					  pid_twiddle.Init(p[0], p[1], p[2], targetVal);
 					  tryAgain = true;
 				  }
 			  }
         	  std::cout<<"currentError: "<<err<<" bestError: "<<best_err<<std::endl;
         	  std::cout<<"best PID coefficients: ["<<bestP[0]<<", "<<bestP[1]<<", "<<bestP[2]<<"]"<<std::endl;
 
-        	  if(dp[0]+dp[1]+dp[2]<0.01)
+        	  if(dp[0]+dp[1]+dp[2]<0.001)
         		  return;
         	  msg = "42[\"reset\",{}]";
           }
