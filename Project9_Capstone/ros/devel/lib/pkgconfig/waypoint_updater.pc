@@ -1,0 +1,8 @@
+prefix=/home/junhua/Udacity_Projects/Project9_Capstone/ros/devel
+
+Name: waypoint_updater
+Description: Description of waypoint_updater
+Version: 0.0.0
+Cflags: 
+Libs: -L/home/junhua/Udacity_Projects/Project9_Capstone/ros/devel/lib 
+Requires: 
