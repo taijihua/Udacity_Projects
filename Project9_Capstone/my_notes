@@ -1,0 +1,13 @@
+# do the following to launch the ros nodes
+cd Udacity_Projects/Project9_Capstone/ros
+
+#catkin_make  #optional
+source activate Capstone_Py2
+source devel/setup.sh
+roslaunch launch/styx.launch
+
+
+##======== to check information on other cmd window
+cd Udacity_Projects/Project9_Capstone/ros
+source devel/setup.sh
+rostopic list
