@@ -54,6 +54,7 @@ class TLDetector(object):
         self.last_state = TrafficLight.UNKNOWN
         self.last_wp = -1
         self.state_count = 0
+        self.imageCounter = 0 #counter for selectively processing images, to mitigate latency in simulator
 
         rospy.spin()
 
@@ -77,12 +78,20 @@ class TLDetector(object):
             msg (Image): image from car-mounted camera
 
         """
+        self.imageCounter = (self.imageCounter+1) % 10
+        if self.imageCounter!=0:
+            return
         self.has_image = True
         self.camera_image = msg
         light_wp, state = self.process_traffic_lights()
         # state : 0-red light; 1-yellow light; 2-green light
-
-        rospy.logwarn('Next light is at waypoint %d, state=%d', light_wp, state)
+        
+        #=== debug info====
+        light_coord = self.waypoints_2d[light_wp]
+        self_coord = [self.pose.pose.position.x, self.pose.pose.position.y]
+        dist = np.sqrt((light_coord[0]-self_coord[0])**2 + (light_coord[1]-self_coord[1])**2)
+        rospy.logwarn('Next light is at waypoint %d, state=%d, distance to car= %d', light_wp, state, dist)
+        #=== end debug info===
 
         '''
         Publish upcoming red lights at camera frequency.
