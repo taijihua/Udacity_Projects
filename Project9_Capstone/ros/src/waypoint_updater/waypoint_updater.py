@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TwistStamped
 from styx_msgs.msg import Lane, Waypoint
 
 from std_msgs.msg import Int32
@@ -76,6 +76,8 @@ class WaypointUpdater(object):
             return (closest_idx+1) % len(self.waypoints_2d)
        
     def publish_waypoints(self, closest_idx):
+        if self.base_wps is None:
+            return
         lane = Lane()
         lane.header = self.base_wps.header                
 
@@ -89,16 +91,18 @@ class WaypointUpdater(object):
         
         if self.stopline_wp_idx == -1 or ((self.stopline_wp_idx-closest_idx+len(self.waypoints_2d)) % len(self.waypoints_2d) >=LOOKAHEAD_WPS):
             lane.waypoints = base_waypoints  #use normal waypoints, cruise speed ~25mph (11m/s)
+            #rospy.logwarn('normal speed driving--current speed = %.2f m/s', self.velocity.twist.linear.x)
         else:
-            rospy.logwarn('!!!need to decelerate, current speed = %d m/s', self.velocity.twist.linear.x)
+            rospy.logwarn('!!!need to decelerate, current speed = %.2f m/s', self.velocity.twist.linear.x)            
             lane.waypoints = self.decelerate_waypoints(base_waypoints, closest_idx)
 
         self.final_waypoints_pub.publish(lane)
 
     def decelerate_waypoints(self, waypoints, closest_idx):
         # modify waypoints if we need to decelerate (due to traffic light)
-        temp = []
-        MAX_DECEL = 0.5
+        wps = []  #to store the new waypoints
+        
+        MAX_DECEL = 0.4 #0.5
         stop_idx = max(((self.stopline_wp_idx-closest_idx+len(self.waypoints_2d)) % len(self.waypoints_2d))-3, 0) #three waypoints back from line (car center is about 2 waypoints from front)
         dist = self.distance(waypoints, 0, stop_idx)  #distance to traffic light stop line
         for i, wp in enumerate(waypoints):
@@ -108,12 +112,12 @@ class WaypointUpdater(object):
                 dist = dist - self.distance(waypoints, i-1, i)
             if dist<0:
                 dist = 0
-            vel = math.sqrt(2*MAX_DECEL*dist)  #decrease velocity, will be 0 when dist=0
+            vel = math.sqrt(2*MAX_DECEL*dist)  #decrease velocity, will be 0 when dist=0 to the stopline
             if vel<1.:
                 vel = 0.
             p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
-            temp.append(p)
-        return temp
+            wps.append(p)
+        return wps
 
     def pose_cb(self, msg): #respond to /current_pose topic
         # TODO: Implement

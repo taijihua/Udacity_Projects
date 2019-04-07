@@ -43,6 +43,9 @@ class Controller(object):
             is_dbw_enabled, cmd_linear_vel, cmd_angular_vel, current_linear_vel = args
         if kwargs: # if kwargs is NOT empty
             pass
+        if is_dbw_enabled is False:
+            self.linearController.reset()
+            return 0, 0, 0
         throttle = 0. #1.0
         brake = 0
         steering = 0
@@ -58,14 +61,16 @@ class Controller(object):
         throttle = self.linearController.step(vel_error, sample_time)
         
         #rospy.logwarn('vel_error = %f', vel_error)
-        #rospy.logwarn('throttle = %f, brake= %f, steering= %f', throttle, brake, steering)
+        
 
-        if cmd_linear_vel==0 and current_linear_vel<0.1: #hold vehicle in place
+        if cmd_linear_vel==0 and current_linear_vel<.5: #0.1 #hold vehicle in place
             throttle = 0
             brake = 700 # N*m, to hold the car in place if vehicle is stopped. Acc ~ 1m/s^2
-        elif throttle < .1 and vel_error<0:  # deceleration
+        #elif throttle < .1 and vel_error<0:  # deceleration  
+        elif throttle < .5 and vel_error<0:  # deceleration  
             throttle = 0
             decel = max(vel_error, self.decel_limit)
             brake = abs(decel)*self.vehicle_mass*self.wheel_radius
+        rospy.logwarn('cmd_vel= %f, curr_vel= %f throttle= %f, brake= %f, steering= %f', cmd_linear_vel, current_linear_vel, throttle, brake, steering)
 
         return throttle, brake, steering

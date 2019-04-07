@@ -16,4 +16,6 @@ if [ ! -f "$USER_PROFILE" ];
     unity_path=$(cat "$USER_PROFILE")
 fi
 
+echo "Debug code, display unity_path below:"
+echo $unity_path
 $unity_path

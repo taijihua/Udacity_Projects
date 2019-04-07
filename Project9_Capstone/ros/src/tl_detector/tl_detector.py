@@ -11,10 +11,12 @@ import tf
 import cv2
 import yaml
 
+import datetime
+
 from scipy.spatial import KDTree
 import numpy as np
 
-STATE_COUNT_THRESHOLD = 3
+STATE_COUNT_THRESHOLD = 2 #3, change to 2 for faster respone, the detection seems to be stable
 
 class TLDetector(object):
     def __init__(self):
@@ -24,6 +26,7 @@ class TLDetector(object):
         self.waypoints = None
         self.camera_image = None
         self.lights = []
+        self.closest_light = None # to store the next traffic light information
         ## additional variables
         self.waypoints_2d = None #store base_waypoints in 2D list form
         self.waypoint_tree = None #store base_waypoints in KD Tree form (for quick lookup)
@@ -78,7 +81,7 @@ class TLDetector(object):
             msg (Image): image from car-mounted camera
 
         """
-        self.imageCounter = (self.imageCounter+1) % 10
+        self.imageCounter = (self.imageCounter+1) % 5  #only process image every 5 frames
         if self.imageCounter!=0:
             return
         self.has_image = True
@@ -90,8 +93,19 @@ class TLDetector(object):
         light_coord = self.waypoints_2d[light_wp]
         self_coord = [self.pose.pose.position.x, self.pose.pose.position.y]
         dist = np.sqrt((light_coord[0]-self_coord[0])**2 + (light_coord[1]-self_coord[1])**2)
-        rospy.logwarn('Next light is at waypoint %d, state=%d, distance to car= %d', light_wp, state, dist)
+        #rospy.logwarn('Next light is at waypoint %d, state=%d, distance to car= %.2f', light_wp, state, dist)
+        strTruth = 'unknown'
+        if self.closest_light:
+            strTruth = '%d'%self.closest_light.state
+        print('Next light is at waypoint %d, state=%d (actual state=%s), distance to car= %.2f'%(light_wp, state, strTruth, dist))
         #=== end debug info===
+
+        ##==== save images, Comment this out when deploy!!!====
+        #cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+        #ts = datetime.datetime.now()
+        #filename = ts.strftime('%Y-%m-%d_%H_%M_%S')+'-state-%d-dist-%d'%(state, dist)+'.jpg'
+        #cv2.imwrite('/home/student/myShare/'+filename, cv_image)
+        ##==== end saving images
 
         '''
         Publish upcoming red lights at camera frequency.
@@ -122,7 +136,7 @@ class TLDetector(object):
 
         """
         #TODO implement (Done)
-        if self.waypoints is None:
+        if self.waypoint_tree is None:
             return -1
         else:
             x = pose.position.x
@@ -150,8 +164,8 @@ class TLDetector(object):
 
         """
         
-        return light.state ## debug use only, this will return the ground truth light state
-                           ## # state : 0-red light; 1-yellow light; 2-green light
+        #return light.state ## debug use only, this will return the ground truth light state
+                           ## # state : 0-red light; 1-yellow light; 2-green light        
 
         if(not self.has_image):
             self.prev_light_loc = None
@@ -171,7 +185,7 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        closest_light = None  # to store the closest light position
+        self.closest_light = None  # to store the closest light position
         line_wp_idx = None  # to store the closest light stop line position (actually its closest waypoint)
 
         # List of positions that correspond to the line to stop in front of for a given intersection
@@ -188,11 +202,11 @@ class TLDetector(object):
                 d = (temp_wp_idx-car_wp_idx + len(self.waypoints.waypoints)) % len(self.waypoints.waypoints)
                 if d<diff:  #d is always >=0 from the above
                     diff = d
-                    closest_light = light
+                    self.closest_light = light
                     line_wp_idx = temp_wp_idx                            
 
-        if closest_light:
-            state = self.get_light_state(closest_light)
+        if self.closest_light:
+            state = self.get_light_state(self.closest_light)
             return line_wp_idx, state
         #self.waypoints = None
         return -1, TrafficLight.UNKNOWN
