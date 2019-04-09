@@ -90,6 +90,7 @@ class TLDetector(object):
         # state : 0-red light; 1-yellow light; 2-green light
         
         #=== debug info====
+        '''
         light_coord = self.waypoints_2d[light_wp]
         self_coord = [self.pose.pose.position.x, self.pose.pose.position.y]
         dist = np.sqrt((light_coord[0]-self_coord[0])**2 + (light_coord[1]-self_coord[1])**2)
@@ -98,6 +99,7 @@ class TLDetector(object):
         if self.closest_light:
             strTruth = '%d'%self.closest_light.state
         print('Next light is at waypoint %d, state=%d (actual state=%s), distance to car= %.2f'%(light_wp, state, strTruth, dist))
+        '''
         #=== end debug info===
 
         ##==== save images, Comment this out when deploy!!!====
@@ -174,7 +176,7 @@ class TLDetector(object):
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
         #Get classification
-        return self.light_classifier.get_classification(cv_image)
+        return self.light_classifier.get_classification(cv_image, self.config['is_site'])
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
