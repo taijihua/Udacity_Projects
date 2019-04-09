@@ -88,22 +88,25 @@ class WaypointUpdater(object):
         
         # select waypoints for lane message, depending on traffic light detection results
         ##TH_DECEL_WPS = 50  #decelerate if diff in waypoints between light and car position is less than this threshold
-        
-        if self.stopline_wp_idx == -1 or ((self.stopline_wp_idx-closest_idx+len(self.waypoints_2d)) % len(self.waypoints_2d) >=LOOKAHEAD_WPS):
+        stop_idx = self.stopline_wp_idx
+        if (stop_idx == -1) or ((stop_idx-closest_idx+len(self.waypoints_2d)) % len(self.waypoints_2d) >=LOOKAHEAD_WPS):
             lane.waypoints = base_waypoints  #use normal waypoints, cruise speed ~25mph (11m/s)
             #rospy.logwarn('normal speed driving--current speed = %.2f m/s', self.velocity.twist.linear.x)
         else:
-            rospy.logwarn('!!!need to decelerate, current speed = %.2f m/s', self.velocity.twist.linear.x)            
-            lane.waypoints = self.decelerate_waypoints(base_waypoints, closest_idx)
+            #rospy.logwarn('!!!need to decelerate, current speed = %.2f m/s', self.velocity.twist.linear.x)
+            #rospy.logwarn('!!!base_waypoints from index %d - %d, need to stop at index %d', closest_idx, (closest_idx+LOOKAHEAD_WPS)% len(self.waypoints_2d), stop_idx)            
+            lane.waypoints = self.decelerate_waypoints(base_waypoints, closest_idx, stop_idx)
+            
 
         self.final_waypoints_pub.publish(lane)
 
-    def decelerate_waypoints(self, waypoints, closest_idx):
-        # modify waypoints if we need to decelerate (due to traffic light)
+    def decelerate_waypoints(self, waypoints, closest_idx, stop_idx):
+        # modify waypoints if we need to decelerate (due to traffic light)        
         wps = []  #to store the new waypoints
         
-        MAX_DECEL = 0.4 #0.5
-        stop_idx = max(((self.stopline_wp_idx-closest_idx+len(self.waypoints_2d)) % len(self.waypoints_2d))-3, 0) #three waypoints back from line (car center is about 2 waypoints from front)
+        MAX_DECEL = 0.4 #0.5, 0.4
+        stop_idx = max(((stop_idx-closest_idx+len(self.waypoints_2d)) % len(self.waypoints_2d))-3, 0) #three waypoints back from line (car center is about 2 waypoints from front)
+        #rospy.logwarn('!!!stop_idx = %d in base_waypoints', stop_idx)
         dist = self.distance(waypoints, 0, stop_idx)  #distance to traffic light stop line
         for i, wp in enumerate(waypoints):
             p = Waypoint()
@@ -113,9 +116,12 @@ class WaypointUpdater(object):
             if dist<0:
                 dist = 0
             vel = math.sqrt(2*MAX_DECEL*dist)  #decrease velocity, will be 0 when dist=0 to the stopline
-            if vel<1.:
+            if vel<0.5:
                 vel = 0.
             p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
+
+            #if i>(stop_idx-2) and (self.velocity.twist.linear.x<0.5): # try to solve overshoot problem
+            #    p.twist.twist.linear.x = 0  #set target to zero if speed is already below 0.5 and close to stop line
             wps.append(p)
         return wps
 
