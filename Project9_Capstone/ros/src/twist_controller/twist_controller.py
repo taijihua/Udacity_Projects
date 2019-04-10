@@ -24,14 +24,17 @@ class Controller(object):
             self.wheel_radius = kwargs['wheel_radius']
             self.decel_limit = kwargs['decel_limit']
 
-        # PID controller for throttle 
-        self.linearController = PID(kp=0.3, ki=0.1, kd=0., mn=0.0, mx=0.6)
+        # PID controller for throttle, udacity video values are 0.3, 0.1, 0.0, 0.0, 0.2
+        self.linearController = PID(kp=0.3, ki=0.1, kd=0., mn=0.0, mx=0.3)
+        #self.linearController = PID(kp=0.3, ki=0.05, kd=0., mn=0.0, mx=0.6)
 
         self.last_vel = None  #store last linear velocity value
         self.last_time = rospy.get_time()  #store last time for getting elapsed time for each step (for integral purpose)
-        # Yaw controller 
+        # Yaw controller
+        #self.yawController = YawController(self.wheel_base, self.steer_ratio, 0.1, self.max_lat_accel, self.max_steer_angle)
         self.yawController = YawController(self.wheel_base, self.steer_ratio, self.min_speed, self.max_lat_accel, self.max_steer_angle)
         tau = 0.5  # 1/(2pi*tau) = cutoff frequency
+        #tau = 0.5  # 1/(2pi*tau) = cutoff frequency
         ts = 0.02  # sample time
         self.vel_lpf = LowPassFilter(tau, ts) #low pass filter for noisy velocity data
         pass
@@ -63,11 +66,11 @@ class Controller(object):
         #rospy.logwarn('vel_error = %f', vel_error)
         
 
-        if cmd_linear_vel==0 and current_linear_vel<.5: #0.1 #hold vehicle in place
+        if cmd_linear_vel==0 and current_linear_vel<.1: #0.1 #hold vehicle in place
             throttle = 0
             brake = 700 # N*m, to hold the car in place if vehicle is stopped. Acc ~ 1m/s^2
         #elif throttle < .1 and vel_error<0:  # deceleration  
-        elif throttle < .5 and vel_error<0:  # deceleration  
+        elif throttle < .1 and vel_error<0:  # deceleration  
             throttle = 0
             decel = max(vel_error, self.decel_limit)
             brake = abs(decel)*self.vehicle_mass*self.wheel_radius

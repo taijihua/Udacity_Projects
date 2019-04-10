@@ -104,19 +104,19 @@ class WaypointUpdater(object):
         # modify waypoints if we need to decelerate (due to traffic light)        
         wps = []  #to store the new waypoints
         
-        MAX_DECEL = 0.4 #0.5, 0.4
+        MAX_DECEL = 0.5 #0.5, 0.4
         stop_idx = max(((stop_idx-closest_idx+len(self.waypoints_2d)) % len(self.waypoints_2d))-3, 0) #three waypoints back from line (car center is about 2 waypoints from front)
         #rospy.logwarn('!!!stop_idx = %d in base_waypoints', stop_idx)
         dist = self.distance(waypoints, 0, stop_idx)  #distance to traffic light stop line
         for i, wp in enumerate(waypoints):
             p = Waypoint()
-            #p.pose = wp.pose #not necessary, remove to reduce cpu load
+            p.pose = wp.pose #may not necessary, remove to reduce cpu load
             if i>0:            
                 dist = dist - self.distance(waypoints, i-1, i)
             if dist<0:
                 dist = 0
             vel = math.sqrt(2*MAX_DECEL*dist)  #decrease velocity, will be 0 when dist=0 to the stopline
-            if vel<0.5:
+            if vel<1.:
                 vel = 0.
             p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
 

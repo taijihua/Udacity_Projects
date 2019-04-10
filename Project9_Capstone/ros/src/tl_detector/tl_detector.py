@@ -144,6 +144,8 @@ class TLDetector(object):
             x = pose.position.x
             y = pose.position.y
             closest_idx = self.waypoint_tree.query([x, y], 1)[1]
+            return closest_idx
+            ''' the following seems unnecessary
             closest_coord = self.waypoints_2d[closest_idx]
             # tell if cloest_idx is in front or behind the vehicle
             prev_coord = self.waypoints_2d[(closest_idx-1+len(self.waypoints_2d)) % len(self.waypoints_2d)] # add len(self.waypoints_2d) in case the closest_idx happens to be 0
@@ -152,6 +154,7 @@ class TLDetector(object):
                 return closest_idx
             else:
                 return (closest_idx+1) % len(self.waypoints_2d)
+            '''
     
     
 
@@ -165,7 +168,7 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        
+        #return 2
         #return light.state ## debug use only, this will return the ground truth light state
                            ## # state : 0-red light; 1-yellow light; 2-green light        
 
