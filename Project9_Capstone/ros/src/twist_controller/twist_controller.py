@@ -31,8 +31,8 @@ class Controller(object):
         self.last_vel = None  #store last linear velocity value
         self.last_time = rospy.get_time()  #store last time for getting elapsed time for each step (for integral purpose)
         # Yaw controller
-        #self.yawController = YawController(self.wheel_base, self.steer_ratio, 0.1, self.max_lat_accel, self.max_steer_angle)
-        self.yawController = YawController(self.wheel_base, self.steer_ratio, self.min_speed, self.max_lat_accel, self.max_steer_angle)
+        self.yawController = YawController(self.wheel_base, self.steer_ratio, 0.1, self.max_lat_accel, self.max_steer_angle)
+        #self.yawController = YawController(self.wheel_base, self.steer_ratio, self.min_speed, self.max_lat_accel, self.max_steer_angle)
         tau = 0.5  # 1/(2pi*tau) = cutoff frequency
         #tau = 0.5  # 1/(2pi*tau) = cutoff frequency
         ts = 0.02  # sample time
