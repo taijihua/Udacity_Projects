@@ -25,7 +25,7 @@ class Controller(object):
             self.decel_limit = kwargs['decel_limit']
 
         # PID controller for throttle, udacity video values are 0.3, 0.1, 0.0, 0.0, 0.2
-        self.linearController = PID(kp=0.3, ki=0.1, kd=0., mn=0.0, mx=0.3)
+        self.linearController = PID(kp=0.3, ki=0.1, kd=0., mn=0.0, mx=0.2)
         #self.linearController = PID(kp=0.3, ki=0.05, kd=0., mn=0.0, mx=0.6)
 
         self.last_vel = None  #store last linear velocity value
