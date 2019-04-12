@@ -57,7 +57,7 @@ class TLDetector(object):
         self.last_state = TrafficLight.UNKNOWN
         self.last_wp = -1
         self.state_count = 0
-        self.imageCounter = 0 #counter for selectively processing images, to mitigate latency in simulator
+        #self.imageCounter = 0 #counter for selectively processing images, to mitigate latency in simulator
 
         rospy.spin()
 
@@ -81,9 +81,9 @@ class TLDetector(object):
             msg (Image): image from car-mounted camera
 
         """
-        self.imageCounter = (self.imageCounter+1) % 5  #only process image every 5 frames
-        if self.imageCounter!=0:
-            return
+        #self.imageCounter = (self.imageCounter+1) % 5  #only process image every 5 frames
+        #if self.imageCounter!=0:
+        #    return
         self.has_image = True
         self.camera_image = msg
         light_wp, state = self.process_traffic_lights()
